@@ -3,13 +3,15 @@ import pandas as pd
 import joblib
 import numpy as np
 
-# --- Load Models and Encoders ---
+# --- Load Models and Lists ---
 
 success_model = joblib.load('movie_success_model.pkl')
 revenue_model = joblib.load('movie_revenue_model.pkl')
 genre_binarizer_success = joblib.load('genre_binarizer.pkl')
 genre_binarizer_revenue = joblib.load('genre_binarizer_revenue.pkl')
 monthly_revenue = pd.read_pickle('monthly_revenue_trends.pkl')
+top_actors = joblib.load('actor_list.pkl')
+top_directors = joblib.load('director_list.pkl')
 
 # --- Header ---
 
@@ -35,12 +37,28 @@ budget = st.number_input("Budget ($)", min_value=1000000, step=500000, value=300
 genres_input = st.multiselect(
     "Select up to 3 Genres",
     options=sorted(genre_binarizer_success.classes_),
-    max_selections=3
+    max_selections=3,
+    help="Select the genres that best fit your movie (up to 3)."
 )
 
-cast_count = st.slider("Top Billed Cast Count", min_value=0, max_value=3, value=2)
+actors_input = st.multiselect(
+    "Select up to 3 Top Billed Actors",
+    options=sorted(top_actors),
+    max_selections=3,
+    help="Select up to 3 major actors appearing in the movie."
+)
 
-release_month = st.selectbox("Planned Release Month", list(range(1, 13)))
+director_input = st.selectbox(
+    "Select a Director",
+    options=sorted(top_directors),
+    help="Select the movie's director."
+)
+
+release_month = st.selectbox(
+    "Planned Release Month",
+    list(range(1, 13)),
+    help="Choose the intended release month (1 = January, 12 = December)."
+)
 
 # --- Prediction Button ---
 
@@ -48,7 +66,7 @@ if st.button("Predict Movie Performance"):
     st.markdown("---")
     st.subheader("🎯 Prediction Results")
     
-    # --- Build Features ---
+    # --- Build Features for Prediction ---
 
     ## For Success Model
     input_success = pd.DataFrame()
@@ -59,12 +77,18 @@ if st.button("Predict Movie Performance"):
     genres_df_success = pd.DataFrame(genres_encoded_success, columns=[f'genre_{g}' for g in genre_binarizer_success.classes_])
     input_success = pd.concat([input_success.reset_index(drop=True), genres_df_success.reset_index(drop=True)], axis=1)
 
-    # Fill missing genres
+    # Fill missing genres (safety)
     for col in genre_binarizer_success.classes_:
         if f'genre_{col}' not in input_success.columns:
             input_success[f'genre_{col}'] = 0
 
-    input_success['cast_count'] = [cast_count]
+    # Actor feature: count top actors
+    actor_count = sum(1 for actor in actors_input if actor in top_actors)
+    input_success['top_actor_count'] = [actor_count]
+
+    # Director feature: known or not
+    known_director = int(director_input in top_directors)
+    input_success['known_director'] = [known_director]
 
     ## For Revenue Model
     input_revenue = pd.DataFrame()
@@ -79,7 +103,8 @@ if st.button("Predict Movie Performance"):
         if f'genre_{col}' not in input_revenue.columns:
             input_revenue[f'genre_{col}'] = 0
 
-    input_revenue['cast_count'] = [cast_count]
+    input_revenue['top_actor_count'] = [actor_count]
+    input_revenue['known_director'] = [known_director]
 
     # --- Make Predictions ---
 
@@ -107,13 +132,15 @@ if st.button("Predict Movie Performance"):
         st.subheader("📈 Suggestions to Improve Success Chances")
 
         if budget < 50000000:
-            st.write("- 💵 **Increase the budget to $50M+** to be more competitive in the market.")
+            st.write("- 💵 **Increase the budget to at least $50M** to compete in the market.")
 
         if monthly_revenue.get(release_month, monthly_revenue.mean()) < monthly_revenue.mean():
             best_month = monthly_revenue.idxmax()
             st.write(f"- 📅 **Consider releasing during a stronger month, like {best_month}** (historically higher box office).")
 
-        if cast_count < 2:
-            st.write("- 🎭 **Consider adding more top-billed well-known actors.**")
+        if actor_count < 2:
+            st.write("- 🎭 **Consider adding more major top-billed actors.**")
+
+        st.write("- 🎬 **Working with a more recognized director could also help.**")
 
     st.markdown("---")
