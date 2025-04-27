@@ -15,7 +15,7 @@ top_directors = joblib.load('director_list.pkl')
 
 # --- Header ---
 
-st.title("🎬 Movie Success and Revenue Predictor")
+st.title("Movie Success and Revenue Predictor")
 
 st.markdown("""
 Welcome! This tool predicts whether a movie will be a **box office success** and estimates its **total box office revenue**.
@@ -23,7 +23,9 @@ Welcome! This tool predicts whether a movie will be a **box office success** and
 **Definitions:**
 - **Success** = A movie earns at least **2× its production budget** in box office revenue.
 - **Suggestions for improvement** are shown only if the predicted success probability is **below 60%**.
-- **Disclaimer:** These are predictions based on historical movie data. Real-world results depend on many unpredictable factors.
+- **Actors:** Select up to 3 major top-billed actors involved. If your movie has no famous stars, select **"None"**.
+- **Director:** Select the director attached. If the director is not among the top known directors, select **"None"**.
+- **Disclaimer:** These are predictions based on historical data and do not guarantee real-world performance.
 """)
 
 st.markdown("---")
@@ -41,17 +43,20 @@ genres_input = st.multiselect(
     help="Select the genres that best fit your movie (up to 3)."
 )
 
+# Insert "None" option at the top
+actors_dropdown = ['None'] + sorted(top_actors)
 actors_input = st.multiselect(
     "Select up to 3 Top Billed Actors",
-    options=sorted(top_actors),
+    options=actors_dropdown,
     max_selections=3,
-    help="Select up to 3 major actors appearing in the movie."
+    help="Select up to 3 major actors appearing in the movie, or 'None' if no major actors."
 )
 
+director_dropdown = ['None'] + sorted(top_directors)
 director_input = st.selectbox(
     "Select a Director",
-    options=sorted(top_directors),
-    help="Select the movie's director."
+    options=director_dropdown,
+    help="Select the movie's director, or 'None' if the director is not well-known."
 )
 
 release_month = st.selectbox(
@@ -77,17 +82,22 @@ if st.button("Predict Movie Performance"):
     genres_df_success = pd.DataFrame(genres_encoded_success, columns=[f'genre_{g}' for g in genre_binarizer_success.classes_])
     input_success = pd.concat([input_success.reset_index(drop=True), genres_df_success.reset_index(drop=True)], axis=1)
 
-    # Fill missing genres (safety)
     for col in genre_binarizer_success.classes_:
         if f'genre_{col}' not in input_success.columns:
             input_success[f'genre_{col}'] = 0
 
-    # Actor feature: count top actors
-    actor_count = sum(1 for actor in actors_input if actor in top_actors)
+    # --- Actor Feature ---
+    if 'None' in actors_input or not actors_input:
+        actor_count = 0
+    else:
+        actor_count = sum(1 for actor in actors_input if actor in top_actors)
     input_success['top_actor_count'] = [actor_count]
 
-    # Director feature: known or not
-    known_director = int(director_input in top_directors)
+    # --- Director Feature ---
+    if director_input == 'None':
+        known_director = 0
+    else:
+        known_director = int(director_input in top_directors)
     input_success['known_director'] = [known_director]
 
     ## For Revenue Model
