@@ -150,6 +150,12 @@ if st.button("Predict Movie Performance"):
         if known_director == 0:
             reasons.append("🎬 Lack of a highly recognized director may limit critical acclaim and promotional leverage.")
 
+    if not reasons:
+    if success_pred == 1:
+        reasons.append("✅ Overall, the combination of budget, release timing, cast, and director suggests a strong likelihood of success.")
+    else:
+        reasons.append("❌ Overall, multiple factors combined to suggest a lower chance of box office success.")
+
     # --- Display Results ---
 
     if success_pred == 1:
