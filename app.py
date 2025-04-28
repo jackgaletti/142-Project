@@ -15,7 +15,7 @@ top_directors = joblib.load('director_list.pkl')
 
 # --- Header ---
 
-st.title("Movie Success and Revenue Predictor")
+st.title("🎬 Movie Success and Revenue Predictor")
 
 st.markdown("""
 Welcome! This tool predicts whether a movie will be a **box office success** and estimates its **total box office revenue**.
@@ -122,34 +122,33 @@ if st.button("Predict Movie Performance"):
     ## Revenue
     predicted_revenue = revenue_model.predict(input_revenue)[0]
 
-    # --- Build Specific Reasoning ---
+    # --- Build Specific Outcome-Based Reasoning ---
 
     reasons = []
 
-    # Budget Reason
-    if budget >= 50000000:
-        reasons.append(f"💵 Budget of ${budget:,.0f} allows for high production value and aggressive marketing campaigns.")
-    else:
-        reasons.append(f"💵 Budget of ${budget:,.0f} is relatively low, which could limit production quality and marketing reach.")
-
-    # Release Month Reason
+    # Calculate month strength
     month_strength = monthly_revenue.get(release_month, monthly_revenue.mean())
-    if month_strength >= monthly_revenue.mean():
-        reasons.append(f"📅 Releasing in month {release_month} benefits from stronger-than-average audience turnout.")
-    else:
-        reasons.append(f"📅 Month {release_month} typically sees lower audience turnout compared to peak periods.")
 
-    # Actor Reason
-    if actor_count >= 2:
-        reasons.append(f"🎭 {actor_count} major top-billed actors are attached, increasing promotional pull and audience interest.")
+    if success_pred == 1:
+        # Only list strong points
+        if budget >= 50000000:
+            reasons.append(f"💵 Budget of ${budget:,.0f} enables high production value and aggressive marketing.")
+        if month_strength >= monthly_revenue.mean():
+            reasons.append(f"📅 Releasing in month {release_month} captures peak seasonal audience turnout.")
+        if actor_count >= 2:
+            reasons.append(f"🎭 {actor_count} major top-billed actors attached boost marketing reach and opening buzz.")
+        if known_director == 1:
+            reasons.append("🎬 Directed by a top-recognized director, enhancing credibility and media attention.")
     else:
-        reasons.append(f"🎭 Few or no major actors attached, potentially reducing audience draw and visibility.")
-
-    # Director Reason
-    if known_director == 1:
-        reasons.append("🎬 Directed by a well-known industry leader, enhancing credibility and critical interest.")
-    else:
-        reasons.append("🎬 No major director attached, which may impact media buzz and critical reception.")
+        # Only list weak points
+        if budget < 50000000:
+            reasons.append(f"💵 Budget of ${budget:,.0f} may limit production scale and promotional power.")
+        if month_strength < monthly_revenue.mean():
+            reasons.append(f"📅 Month {release_month} tends to have weaker box office performance compared to peak seasons.")
+        if actor_count < 2:
+            reasons.append(f"🎭 Having {actor_count} major actors may not provide enough audience draw.")
+        if known_director == 0:
+            reasons.append("🎬 Lack of a highly recognized director may limit critical acclaim and promotional leverage.")
 
     # --- Display Results ---
 
@@ -172,16 +171,16 @@ if st.button("Predict Movie Performance"):
         st.subheader("📈 Suggestions to Improve Success Chances")
 
         if budget < 50000000:
-            st.write("- 💵 **Consider increasing your budget to at least $50M** to better compete in the market.")
+            st.write("- 💵 **Consider increasing your budget to at least $50M** to better compete.")
 
         if month_strength < monthly_revenue.mean():
             best_month = monthly_revenue.idxmax()
-            st.write(f"- 📅 **Consider releasing during a stronger month, such as {best_month}** when audiences are larger.")
+            st.write(f"- 📅 **Consider releasing during a stronger month like {best_month} to maximize audience turnout.**")
 
         if actor_count < 2:
-            st.write("- 🎭 **Adding one or more major top-billed actors could significantly boost promotional power.**")
+            st.write("- 🎭 **Adding more top-billed actors could significantly improve visibility and buzz.**")
 
         if known_director == 0:
-            st.write("- 🎬 **Partnering with a top-recognized director could improve media coverage and credibility.**")
+            st.write("- 🎬 **Working with a more recognized director could enhance credibility and media attention.**")
 
     st.markdown("---")
