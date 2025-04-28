@@ -43,7 +43,6 @@ genres_input = st.multiselect(
     help="Select the genres that best fit your movie (up to 3)."
 )
 
-# Insert "None" option at the top
 actors_dropdown = ['None'] + sorted(top_actors)
 actors_input = st.multiselect(
     "Select up to 3 Top Billed Actors",
@@ -86,14 +85,12 @@ if st.button("Predict Movie Performance"):
         if f'genre_{col}' not in input_success.columns:
             input_success[f'genre_{col}'] = 0
 
-    # --- Actor Feature ---
     if 'None' in actors_input or not actors_input:
         actor_count = 0
     else:
         actor_count = sum(1 for actor in actors_input if actor in top_actors)
     input_success['top_actor_count'] = [actor_count]
 
-    # --- Director Feature ---
     if director_input == 'None':
         known_director = 0
     else:
@@ -125,6 +122,35 @@ if st.button("Predict Movie Performance"):
     ## Revenue
     predicted_revenue = revenue_model.predict(input_revenue)[0]
 
+    # --- Build Specific Reasoning ---
+
+    reasons = []
+
+    # Budget Reason
+    if budget >= 50000000:
+        reasons.append(f"💵 Budget of ${budget:,.0f} allows for high production value and aggressive marketing campaigns.")
+    else:
+        reasons.append(f"💵 Budget of ${budget:,.0f} is relatively low, which could limit production quality and marketing reach.")
+
+    # Release Month Reason
+    month_strength = monthly_revenue.get(release_month, monthly_revenue.mean())
+    if month_strength >= monthly_revenue.mean():
+        reasons.append(f"📅 Releasing in month {release_month} benefits from stronger-than-average audience turnout.")
+    else:
+        reasons.append(f"📅 Month {release_month} typically sees lower audience turnout compared to peak periods.")
+
+    # Actor Reason
+    if actor_count >= 2:
+        reasons.append(f"🎭 {actor_count} major top-billed actors are attached, increasing promotional pull and audience interest.")
+    else:
+        reasons.append(f"🎭 Few or no major actors attached, potentially reducing audience draw and visibility.")
+
+    # Director Reason
+    if known_director == 1:
+        reasons.append("🎬 Directed by a well-known industry leader, enhancing credibility and critical interest.")
+    else:
+        reasons.append("🎬 No major director attached, which may impact media buzz and critical reception.")
+
     # --- Display Results ---
 
     if success_pred == 1:
@@ -135,22 +161,27 @@ if st.button("Predict Movie Performance"):
     st.write(f"**Predicted Success Probability:** {success_prob:.2%}")
     st.write(f"**Estimated Box Office Revenue:** ${predicted_revenue:,.0f}")
 
-    # --- Improvement Suggestions (if needed) ---
+    st.markdown("### 📋 Reasoning Behind Prediction")
+    for reason in reasons:
+        st.write("-", reason)
+
+    # --- Improvement Suggestions (only if probability < 60%) ---
 
     if success_prob < 0.6:
         st.markdown("---")
         st.subheader("📈 Suggestions to Improve Success Chances")
 
         if budget < 50000000:
-            st.write("- 💵 **Increase the budget to at least $50M** to compete in the market.")
+            st.write("- 💵 **Consider increasing your budget to at least $50M** to better compete in the market.")
 
-        if monthly_revenue.get(release_month, monthly_revenue.mean()) < monthly_revenue.mean():
+        if month_strength < monthly_revenue.mean():
             best_month = monthly_revenue.idxmax()
-            st.write(f"- 📅 **Consider releasing during a stronger month, like {best_month}** (historically higher box office).")
+            st.write(f"- 📅 **Consider releasing during a stronger month, such as {best_month}** when audiences are larger.")
 
         if actor_count < 2:
-            st.write("- 🎭 **Consider adding more major top-billed actors.**")
+            st.write("- 🎭 **Adding one or more major top-billed actors could significantly boost promotional power.**")
 
-        st.write("- 🎬 **Working with a more recognized director could also help.**")
+        if known_director == 0:
+            st.write("- 🎬 **Partnering with a top-recognized director could improve media coverage and credibility.**")
 
     st.markdown("---")
